@@ -199,7 +199,7 @@ app.post('/api/attendance/mark', async (req, res) => {
           date: today,
           status: true,
           rssi: rssi || null,
-          face_scan_ face_scan_data || null
+          face_scan_data || null
         }
       ])
       .select('*');
