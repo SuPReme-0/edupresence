@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 
-// Simple loading spinner component (inline to avoid path issues)
+// Inline LoadingSpinner component to avoid path issues
 const LoadingSpinner = ({ message = 'Loading...' }) => (
   <div style={{
     display: 'flex',
@@ -24,14 +24,12 @@ const LoadingSpinner = ({ message = 'Loading...' }) => (
     }}></div>
     <p>{message}</p>
     
-    <style>
-      {`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}
-    </style>
+    <style jsx>{`
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `}</style>
   </div>
 );
 
