@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 export const useBLEAdvertiser = () => {
   const [isAdvertising, setIsAdvertising] = useState(false);
+  const [advertisingState, setAdvertisingState] = useState('idle');
   const [error, setError] = useState(null);
 
   const startAdvertising = async (classId, teacherId) => {
@@ -18,9 +19,12 @@ export const useBLEAdvertiser = () => {
       console.log('Starting BLE advertisement for class:', classId);
       
       // Simulate successful advertisement
+      setAdvertisingState('advertising');
+      
       setTimeout(() => {
+        setAdvertisingState('complete');
         setIsAdvertising(false);
-      }, 1000);
+      }, 5000);
       
       return true;
     } catch (err) {
@@ -30,9 +34,16 @@ export const useBLEAdvertiser = () => {
     }
   };
 
+  const stopAdvertising = () => {
+    setIsAdvertising(false);
+    setAdvertisingState('idle');
+  };
+
   return {
     isAdvertising,
+    advertisingState,
     error,
-    startAdvertising
+    startAdvertising,
+    stopAdvertising
   };
 };
