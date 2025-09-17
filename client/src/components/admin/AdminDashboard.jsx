@@ -3,6 +3,8 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import { supabase } from '../../utils/supabaseClient';
+import { useAuth } from '../../hooks/useAuth';
+import AddUserPopup from './AddUserPopup';
 
 function TeacherCard3D({ teacher, position, onClick }) {
   const meshRef = useRef();
@@ -93,12 +95,18 @@ export default function AdminDashboard() {
   const [teachers, setTeachers] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [addType, setAddType] = useState('student');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTeacher, setSelectedTeacher] = useState(null);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         // Fetch teachers
-        const { data: teachersData, error: teachersError } = await supabase
+        const {  teachersData, error: teachersError } = await supabase
           .from('users')
           .select('*')
           .eq('role', 'teacher');
@@ -106,7 +114,7 @@ export default function AdminDashboard() {
         if (teachersError) throw teachersError;
         
         // Fetch students
-        const { data: studentsData, error: studentsError } = await supabase
+        const {  studentsData, error: studentsError } = await supabase
           .from('users')
           .select('*')
           .eq('role', 'student');
@@ -124,6 +132,19 @@ export default function AdminDashboard() {
     
     fetchUsers();
   }, []);
+
+  const handleAddUser = (type) => {
+    setAddType(type);
+    setShowAddUser(true);
+  };
+
+  const filteredTeachers = teachers.filter(teacher =>
+    teacher.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredStudents = students.filter(student =>
+    student.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (loading) {
     return (
@@ -154,22 +175,22 @@ export default function AdminDashboard() {
           <pointLight position={[-10, -10, -10]} intensity={0.5} />
           
           {/* Teachers Column */}
-          {teachers.map((teacher, index) => (
+          {filteredTeachers.map((teacher, index) => (
             <TeacherCard3D
               key={teacher.id}
               teacher={teacher}
               position={[-4, 2 - index * 2.5, 0]}
-              onClick={() => console.log('Teacher clicked:', teacher.name)}
+              onClick={() => setSelectedTeacher(teacher)}
             />
           ))}
           
           {/* Students Column */}
-          {students.map((student, index) => (
+          {filteredStudents.map((student, index) => (
             <StudentCard3D
               key={student.id}
               student={student}
               position={[4, 2 - index * 2.5, 0]}
-              onClick={() => console.log('Student clicked:', student.name)}
+              onClick={() => setSelectedStudent(student)}
             />
           ))}
           
@@ -191,12 +212,57 @@ export default function AdminDashboard() {
         overflowY: 'auto',
         color: 'white'
       }}>
-        <h2 style={{ marginBottom: '2rem' }}>Admin Dashboard</h2>
-        <div>
-          <h3>Statistics</h3>
-          <p>Total Teachers: {teachers.length}</p>
-          <p>Total Students: {students.length}</p>
+        <div style={{ marginBottom: '2rem' }}>
+          <h2 style={{ marginBottom: '1rem' }}>Admin Dashboard</h2>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button
+              onClick={() => handleAddUser('student')}
+              style={{
+                padding: '0.5rem 1rem',
+                background: '#10b981',
+                border: 'none',
+                borderRadius: '5px',
+                color: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              Add Student
+            </button>
+            <button
+              onClick={() => handleAddUser('teacher')}
+              style={{
+                padding: '0.5rem 1rem',
+                background: '#4f46e5',
+                border: 'none',
+                borderRadius: '5px',
+                color: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              Add Teacher
+            </button>
+          </div>
         </div>
+        
+        <div style={{ marginBottom: '2rem' }}>
+          <h3>Search Users</h3>
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '0.5rem',
+              borderRadius: '5px',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              background: 'rgba(255, 255, 255, 0.1)',
+              color: 'white',
+              fontSize: '1rem'
+            }}
+          />
+        </div>
+        
         <div style={{ marginTop: '2rem' }}>
           <h3>Recent Activity</h3>
           <div style={{ 
@@ -221,6 +287,18 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+      
+      {/* Add User Popup */}
+      {showAddUser && (
+        <AddUserPopup
+          onClose={() => setShowAddUser(false)}
+          type={addType}
+          onSuccess={() => {
+            setShowAddUser(false);
+            // Refresh user list
+          }}
+        />
+      )}
     </div>
   );
 }
