@@ -36,6 +36,11 @@ export const useBLEScanner = () => {
     }
   };
 
+  const stopScanning = () => {
+    setIsScanning(false);
+    setFoundSessions([]);
+  };
+
   const validateSession = async (sessionToken) => {
     try {
       // In a real implementation, this would call your backend
@@ -52,6 +57,7 @@ export const useBLEScanner = () => {
     foundSessions,
     error,
     startScanning,
+    stopScanning,
     validateSession
   };
 };
