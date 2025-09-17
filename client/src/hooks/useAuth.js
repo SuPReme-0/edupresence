@@ -7,14 +7,16 @@ export const useAuth = () => {
 
   useEffect(() => {
     const getUser = async () => {
-      const {  { session } } = await supabase.auth.getSession();
+      // FIX: Correct destructuring syntax
+      const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user || null);
       setLoading(false);
     };
 
     getUser();
 
-    const {  { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // FIX: Correct destructuring syntax
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
       setLoading(false);
     });
