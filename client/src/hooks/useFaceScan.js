@@ -14,8 +14,8 @@ export const useFaceScan = () => {
       setTimeout(() => {
         setScanResult({
           success: true,
-          faceData: 'face_scan_data_placeholder',
-          confidence: 0.95
+          confidence: 0.95,
+          faceData: 'simulated_face_data'
         });
         setIsScanning(false);
       }, 2000);
