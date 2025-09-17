@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, Sphere } from '@react-three/drei';
 import * as THREE from 'three';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
 function FloatingOrbs() {
