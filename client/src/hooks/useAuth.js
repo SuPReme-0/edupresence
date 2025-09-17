@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import supabase from "../utils/supabaseClient";
-
+import { supabase } from '../utils/supabaseClient';
 
 export const useAuth = () => {
   const [user, setUser] = useState(null);
@@ -8,15 +7,17 @@ export const useAuth = () => {
 
   useEffect(() => {
     const getUser = async () => {
-      // FIX: Correct destructuring syntax
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error('Error getting session:', error);
+      } else {
+        setUser(data.session?.user || null);
+      }
       setLoading(false);
     };
 
     getUser();
 
-    // FIX: Correct destructuring syntax
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
       setLoading(false);
