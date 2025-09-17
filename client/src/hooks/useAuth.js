@@ -50,3 +50,5 @@ export const useAuth = () => {
 
   return { user, loading, signIn, signOut, signUp };
 };
+
+export default useAuth;
