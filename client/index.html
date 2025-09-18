@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduSphere | Interactive Learning Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #8b5cf6;
+            --accent: #ec4899;
+            --dark: #0f172a;
+            --darker: #020617;
+            --light: #f1f5f9;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--darker), var(--dark));
+            color: var(--light);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .card-3d {
+            transform-style: preserve-3d;
+            transition: transform 0.5s ease;
+            perspective: 1000px;
+        }
+        
+        .card-3d:hover {
+            transform: translateY(-10px) rotateX(5deg);
+        }
+        
+        .floating {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(99, 102, 241, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+        }
+        
+        .role-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .role-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .progress-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        
+        .stat-card {
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .profile-img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--primary);
+        }
+        
+        .class-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .class-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .attendance-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .status-present {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+        
+        .status-absent {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+        
+        .status-late {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+        
+        .sidebar {
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 250px;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 20px 0;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+        
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="login-page" class="min-h-screen flex items-center justify-center p-4">
+        <div class="glass w-full max-w-md p-8 rounded-2xl text-center">
+            <div class="mb-8">
+                <h1 class="text-4xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-300">EduSphere</h1>
+                <p class="text-gray-400">Interactive Learning Management System</p>
+            </div>
+            
+            <div class="mb-8">
+                <button id="select-role-btn" class="btn-primary w-full py-3 px-6 rounded-xl text-lg font-semibold">
+                    Select Your Role
+                </button>
+            </div>
+            
+            <div class="text-sm text-gray-500">
+                <p>© 2023 EduSphere. All rights reserved.</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Role Selection Modal -->
+    <div id="role-modal" class="modal">
+        <div class="glass p-8 rounded-2xl max-w-2xl w-full mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Select Your Role</h2>
+                <button id="close-role-modal" class="text-gray-400 hover:text-white">
+                    <i data-feather="x"></i>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="role-card glass p-6 rounded-xl flex flex-col items-center text-center" data-role="admin">
+                    <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mb-4">
+                        <i data-feather="shield" class="w-8 h-8 text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">Administrator</h3>
+                    <p class="text-gray-400 text-sm">Manage users, classes, and system settings</p>
+                </div>
+                
+                <div class="role-card glass p-6 rounded-xl flex flex-col items-center text-center" data-role="teacher">
+                    <div class="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center mb-4">
+                        <i data-feather="user" class="w-8 h-8 text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">Faculty</h3>
+                    <p class="text-gray-400 text-sm">Create classes, take attendance, and track student progress</p>
+                </div>
+                
+                <div class="role-card glass p-6 rounded-xl flex flex-col items-center text-center" data-role="student">
+                    <div class="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-teal-600 flex items-center justify-center mb-4">
+                        <i data-feather="users" class="w-8 h-8 text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">Student</h3>
+                    <p class="text-gray-400 text-sm">Join classes, give attendance, and view your records</p>
+                </div>
+            </div>
+            
+            <div class="text-center">
+                <p class="text-gray-500 text-sm">Select your role to proceed with login</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Login Form Modal -->
+    <div id="login-modal" class="modal">
+        <div class="glass p-8 rounded-2xl max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Login as <span id="role-title">Administrator</span></h2>
+                <button id="close-login-modal" class="text-gray-400 hover:text-white">
+                    <i data-feather="x"></i>
+                </button>
+            </div>
+            
+            <form id="login-form" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Email Address</label>
+                    <input type="email" id="email" class="w-full bg-gray-800 bg-opacity-50 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="your@email.com" required>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Password</label>
+                    <input type="password" id="password" class="w-full bg-gray-800 bg-opacity-50 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="••••••••" required>
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <input id="remember" name="remember" type="checkbox" class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-700 rounded">
+                        <label for="remember" class="ml-2 block text-sm">Remember me</label>
+                    </div>
+                    
+                    <a href="#" class="text-sm text-purple-400 hover:text-purple-300">Forgot password?</a>
+                </div>
+                
+                <button type="submit" class="btn-primary w-full py-3 px-6 rounded-xl font-semibold">
+                    Sign In
+                </button>
+            </form>
+            
+            <div class="mt-6 text-center">
+                <p class="text-gray-500 text-sm">Don't have an account? <a href="#" class="text-purple-400 hover:text-purple-300">Contact Administrator</a></p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Admin Dashboard -->
+    <div id="admin-dashboard" class="hidden">
+        <div class="sidebar">
+            <div class="p-6 border-b border-gray-800 mb-6">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold mr-3">
+                        AD
+                    </div>
+                    <div>
+                        <h3 class="font-bold">Admin User</h3>
+                        <p class="text-xs text-gray-400">Administrator</p>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="px-4">
+                <ul class="space-y-2">
+                    <li>
+                        <a href="#" class="flex items-center px-4 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+                            <i data-feather="home" class="w-5 h-5 mr-3"></i>
+                            Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800">
+                            <i data-feather="users" class="w-5 h-5 mr-3"></i>
+                            Manage Users
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800">
+                            <i data-feather="book" class="w-5 h-5 mr-3"></i>
+                            Classes
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800">
+                            <i data-feather="bar-chart-2" class="w-5 h-5 mr-3"></i>
+                            Analytics
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800">
+                            <i data-feather="settings" class="w-5 h-5 mr-3"></i>
+                            Settings
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="mt-auto px-4 pt-4 border-t border-gray-800">
+                <a href="#" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800">
+                    <i data-feather="log-out" class="w-5 h-5 mr-3"></i>
+                    Logout
+                </a>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold">Administrator Dashboard</h1>
+                <p class="text-gray-400">Manage your educational institution</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="stat-card glass p-6 rounded-xl">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-400">Total Students</p>
+                            <h3 class="text-3xl font-bold mt-2">1,248</h3>
+                        </div>
+                        <div class="p-3 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg">
+                            <i data-feather="users" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 75%"></div>
+                        </div>
+                        <p class="text-sm text-gray-400 mt-2">+12% from last month</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card glass p-6 rounded-xl">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-400">Total Faculty</p>
+                            <h3 class="text-3xl font-bold mt-2">48</h3>
+                        </div>
+                        <div class="p-3 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg">
+                            <i data-feather="user" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 60%"></div>
+                        </div>
+                        <p class="text-sm text-gray-400 mt-2">+5% from last month</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card glass p-6 rounded-xl">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-400">Attendance Rate</p>
+                            <h3 class="text-3xl font-bold mt-2">84%</h3>
+                        </div>
+                        <div class="p-3 bg-gradient-to-br from-green-600 to-teal-600 rounded-lg">
+                            <i data-feather="check-circle" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 84%"></div>
+                        </div>
+                        <p class="text-sm text-gray-400 mt-2">+3% from yesterday</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="glass p-6 rounded-xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold">Recent Activities</h2>
+                        <button class="text-purple-400 hover:text-purple-300">
+                            <i data-feather="more-horizontal"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-start">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold mr-3">
+                                JD
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-medium">John Doe</h3>
+                                <p class="text-sm text-gray-400">Created new class "Advanced Algorithms"</p>
+                                <p class="text-xs text-gray-500 mt-1">2 hours ago</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white font-bold mr-3">
+                                AS
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-medium">Alice Smith</h3>
+                                <p class="text-sm text-gray-400">Marked attendance for Data Structures class</p>
+                                <p class="text-xs text-gray-500 mt-1">4 hours ago</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-teal-600 flex items-center justify-center text-white font-bold mr-3">
+                                MB
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-medium">Michael Brown</h3>
+                                <p class="text-sm text-gray-400">Submitted assignment for Machine Learning</p>
+                                <p class="text-xs text-gray-500 mt-1">6 hours ago</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="glass p-6 rounded-xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold">System Status</h2>
+                        <button class="text-purple-400 hover:text-purple-300">
+                            <i data-feather="refresh-cw"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm">Database</span>
+                                <span class="text-sm text-green-400">Operational</span>
+                            </div>
+                            <div class="progress-bar h-2">
+                                <div class="progress-fill bg-green-500" style="width: 100%"></div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm">Authentication</span>
+                                <span class="text-sm text-green-400">Operational</span>
+                            </div>
+                            <div class="progress-bar h-2">
+                                <div class="progress-fill bg-green-500" style="width: 100%"></div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm">BLE Service</span>
+                                <span class="text-sm text-yellow-400">Degraded</span>
+                            </div>
+                            <div class="progress-bar h-2">
+                                <div class="progress-fill bg-yellow-500" style="width: 75%"></div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm">Storage</span>
+                                <span class="text-sm text-green-400">Operational</span>
+                            </div>
+                            <div class="progress-bar h-2">
+                                <div class="progress-fill bg-green-500" style="width: 85%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Teacher Dashboard -->
+    <div id="teacher-dashboard" class="hidden">
+        <div class="sidebar">
+            <div class="p-6 border-b border-gray-800 mb-6">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white font-bold mr-3">
+                        JD
+                    </div>
+                    <div>
+                        <h3 class="font-bold">John Doe</h3>
+                        <p class="text-xs text-gray-400">Computer Science</p>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="px-4">
+                <ul class="space-y-2">
+                    <li>
+                        <a href="#" class="flex items-center px-4 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+                            <i data-feather="home" class="w-5 h-5 mr-3"></i>
+                            Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800">
+                            <i data-feather="book" class="w-5 h-5 mr-3"></i>
+                            My Classes
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800">
+                            <i data-feather="calendar" class="w-5 h-5 mr-3"></i>
+                            Schedule
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800">
+                            <i data-feather="users" class="w-5 h-5 mr-3"></i>
+                            Students
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800">
+                            <i data-feather="bar-chart-2" class="w-5 h-5 mr-3"></i>
+                            Analytics
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="mt-auto px-4 pt-4 border-t border-gray-800">
+                <a href="#" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800">
+                    <i data-feather="log-out" class="w-5 h-5 mr-3"></i>
+                    Logout
+                </a>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold">Faculty Dashboard</h1>
+                <p class="text-gray-400">Manage your classes and students</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="class-card glass p-6 rounded-xl col-span-2">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold">Today's Classes</h2>
+                            <p class="text-gray-400">Wednesday, October 18, 2023</p>
+                        </div>
+                        <button class="btn-primary flex items-center">
+                            <i data-feather="plus" class="w-4 h-4 mr-2"></i>
+                            New Class
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center p-4 bg-gray-800 bg-opacity-50 rounded-lg">
+                            <div>
+                                <h3 class="font-bold">Data Structures</h3>
+                                <p class="text-sm text-gray-400">10:00 AM - 11:30 AM</p>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="flex -space-x-2 mr-3">
+                                    <div class="w-8 h-8 rounded-full bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=200&h=200&q=80')"></div>
+                                    <div class="w-8 h-8 rounded-full bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=200&h=200&q=80')"></div>
+                                    <div class="w-8 h-8 rounded-full bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=200&h=200&q=80')"></div>
+                                    <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs">+32</div>
+                                </div>
+                                <span class="text-sm text-gray-400 mr-4">35 students</span>
+                                <button class="btn-primary py-2 px-4 text-sm">
+                                    Start Attendance
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-between items-center p-4 bg-gray-800 bg-opacity-50 rounded-lg">
+                            <div>
+                                <h3 class="font-bold">Algorithms</h3>
+                                <p class="text-sm text-gray-400">2:00 PM - 3:30 PM</p>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="flex -space-x-2 mr-3">
+                                    <div class="w-8 h-8 rounded-full bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=200&h=200&q=80')"></div>
+                                    <div class="w-8 h-8 rounded-full bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=200&h=200&q=80')"></div>
+                                    <div class="w-8 h-8 rounded-full bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=200&h=200&q=80')"></div>
+                                    <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs">+27</div>
+                                </div>
+                                <span class="text-sm text-gray-400 mr-4">30 students</span>
+                                <button class="btn-secondary py-2 px-4 text-sm">
+                                    View Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="glass p-6 rounded-xl">
+                    <h2 class="text-xl font-bold mb-6">Quick Actions</h2>
+                    
+                    <div class="space-y-4">
+                        <button class="w-full btn-secondary py-3 px-4 rounded-lg flex items-center">
+                            <i data-feather="calendar" class="w-5 h-5 mr-3"></i>
+                            Schedule Class
+                        </button>
+                        
+                        <button class="w-full btn-secondary py-3 px-4 rounded-lg flex items-center">
+                            <i data-feather="file-text" class="w-5 h-5 mr-3"></i>
+                            Assign Homework
+                        </button>
+                        
+                        <button class="w-full btn-secondary py-3 px-4 rounded-lg flex items-center">
+                            <i data-feather="bar-chart-2" class="w-5 h-5 mr-3"></i>
+                            View Analytics
+                        </button>
+                        
+                        <button class="w-full btn-secondary py-3 px-4 rounded-lg flex items-center">
+                            <i data-feather="message-square" class="w-5 h-5 mr-3"></i>
+                            Send Message
+                        </button>
+                    </div>
+                    
+                    <div class="mt-8">
+                        <h3 class="font-bold mb-4">Upcoming Classes</h3>
+                        <div class="space-y-3">
+                            <div class="p-3 bg-gray-800 bg-opacity-50 rounded-lg">
+                                <h4 class="font-medium">Database Systems</h4>
+                                <p class="text-sm text-gray-400">Tomorrow, 9:00 AM</p>
+                            </div>
+                            
+                            <div class="p-3 bg-gray-800 bg-opacity-50 rounded-lg">
+                                <h4 class="font-medium">Operating Systems</h4>
+                                <p class="text-sm text-gray-400">Friday, 11:00 AM</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Student Dashboard -->
+    <div id="student-dashboard" class="hidden">
+        <div class="sidebar">
+            <div class="p-6 border-b border-gray-800 mb-6">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-teal-600 flex items-center justify-center text-white font-bold mr-3">
+                        MB
+                    </div>
+                    <div>
+                        <h3 class="font-bold">Michael Brown</h3>
+                        <p class="text-xs text-gray-400">Computer Science - CS-3A</p>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="px-4">
+                <ul class="space-y-2">
+                    <li>
+                        <a href="#" class="flex items-center px-4 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+                            <i data-feather="home" class="w-5 h-5 mr-3"></i>
+                            Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800">
+                            <i data-feather="book" class="w-5 h-5 mr-3"></i>
+                            My Classes
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800">
+                            <i data-feather="calendar" class="w-5 h-5 mr-3"></i>
+                            Schedule
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800">
+                            <i data-feather="file-text" class="w-5 h-5 mr-3"></i>
+                            Assignments
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800">
+                            <i data-feather="bar-chart-2" class="w-5 h-5 mr-3"></i>
+                            Performance
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="mt-auto px-4 pt-4 border-t border-gray-800">
+                <a href="#" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800">
+                    <i data-feather="log-out" class="w-5 h-5 mr-3"></i>
+                    Logout
+                </a>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold">Student Dashboard</h1>
+                <p class="text-gray-400">Track your classes and attendance</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="glass p-6 rounded-xl">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <h2 class="text-xl font-bold">My Profile</h2>
+                        </div>
+                        <button class="text-purple-400 hover:text-purple-300">
+                            <i data-feather="edit"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="text-center">
+                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=200&h=200&q=80" alt="Profile" class="profile-img mx-auto mb-4">
+                        <h3 class="text-xl font-bold">Michael Brown</h3>
+                        <p class="text-gray-400 mb-2">Computer Science - CS-3A</p>
+                        <p class="text-sm text-gray-500">Enrollment: CS20230001</p>
+                    </div>
+                    
+                    <div class="mt-6 grid grid-cols-2 gap-4">
+                        <div class="bg-gray-800 bg-opacity-50 p-3 rounded-lg">
+                            <p class="text-sm text-gray-400">Attendance</p>
+                            <p class="text-xl font-bold">85%</p>
+                        </div>
+                        <div class="bg-gray-800 bg-opacity-50 p-3 rounded-lg">
+                            <p class="text-sm text-gray-400">Assignments</p>
+                            <p class="text-xl font-bold">78%</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="glass p-6 rounded-xl col-span-2">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <h2 class="text-xl font-bold">Today's Classes</h2>
+                            <p class="text-gray-400">Wednesday, October 18, 2023</p>
+                        </div>
+                        <button class="btn-primary flex items-center">
+                            <i data-feather="search" class="w-4 h-4 mr-2"></i>
+                            Browse Classes
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="class-card p-4 bg-gray-800 bg-opacity-50 rounded-lg">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h3 class="font-bold">Data Structures</h3>
+                                    <p class="text-sm text-gray-400">Dr. John Doe | Room 201</p>
+                                </div>
+                                <div class="flex items-center">
+                                    <span class="text-sm text-gray-400 mr-4">10:00 AM - 11:30 AM</span>
+                                    <button class="btn-primary py-2 px-4 text-sm">
+                                        Join Class
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="class-card p-4 bg-gray-800 bg-opacity-50 rounded-lg">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h3 class="font-bold">Algorithms</h3>
+                                    <p class="text-sm text-gray-400">Prof. Alice Smith | Room 305</p>
+                                </div>
+                                <div class="flex items-center">
+                                    <span class="text-sm text-gray-400 mr-4">2:00 PM - 3:30 PM</span>
+                                    <button class="btn-secondary py-2 px-4 text-sm">
+                                        View Details
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-8">
+                        <h3 class="font-bold mb-4">Recent Attendance</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="text-left border-b border-gray-700">
+                                        <th class="pb-3">Class</th>
+                                        <th class="pb-3">Date</th>
+                                        <th class="pb-3">Status</th>
+                                        <th class="pb-3">Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-700">
+                                    <tr>
+                                        <td class="py-3">Data Structures</td>
+                                        <td class="py-3">Oct 16, 2023</td>
+                                        <td class="py-3"><span class="attendance-status status-present">Present</span></td>
+                                        <td class="py-3">10:05 AM</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-3">Algorithms</td>
+                                        <td class="py-3">Oct 14, 2023</td>
+                                        <td class="py-3"><span class="attendance-status status-late">Late</span></td>
+                                        <td class="py-3">10:12 AM</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-3">Database Systems</td>
+                                        <td class="py-3">Oct 11, 2023</td>
+                                        <td class="py-3"><span class="attendance-status status-absent">Absent</span></td>
+                                        <td class="py-3">-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Attendance Request Modal -->
+    <div id="attendance-modal" class="modal">
+        <div class="glass p-8 rounded-2xl max-w-2xl w-full mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Attendance Request</h2>
+                <button id="close-attendance-modal" class="text-gray-400 hover:text-white">
+                    <i data-feather="x"></i>
+                </button>
+            </div>
+            
+            <div class="text-center mb-8">
+                <div class="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mx-auto mb-6 pulse">
+                    <i data-feather="bluetooth" class="w-12 h-12 text-white"></i>
+                </div>
+                <h3 class="text-xl font-bold mb-2">Data Structures Class</h3>
+                <p class="text-gray-400 mb-6">Dr. John Doe | Room 201</p>
+                
+                <div class="bg-gray-800 bg-opacity-50 rounded-lg p-4 mb-6">
+                    <p class="mb-2">Searching for teacher's Bluetooth signal...</p>
+                    <div class="progress-bar h-2">
+                        <div class="progress-fill bg-blue-500" style="width: 45%"></div>
+                    </div>
+                </div>
+                
+                <p class="text-sm text-gray-500">Please ensure Bluetooth is enabled and you're near the teacher</p>
+            </div>
+            
+            <div class="flex justify-center space-x-4">
+                <button id="cancel-attendance" class="btn-secondary py-3 px-6 rounded-xl font-semibold">
+                    Cancel
+                </button>
+                <button id="proceed-attendance" class="btn-primary py-3 px-6 rounded-xl font-semibold">
+                    Proceed to Face Scan
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+  // Initialize Feather Icons
+  feather.replace();
+
+  // Supabase Client
+  const SUPABASE_URL = "https://your-supabase.supabase.co";
+  const SUPABASE_ANON_KEY = "your-anon-key";
+  const supabase = window.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let user = null;
+  let selectedRole = '';
+  let currentClassId = null;
+
+  // DOM Elements
+  const loginPage = document.getElementById('login-page');
+  const roleModal = document.getElementById('role-modal');
+  const loginModal = document.getElementById('login-modal');
+  const selectRoleBtn = document.getElementById('select-role-btn');
+  const closeRoleModal = document.getElementById('close-role-modal');
+  const closeLoginModal = document.getElementById('close-login-modal');
+  const roleCards = document.querySelectorAll('.role-card');
+  const roleTitle = document.getElementById('role-title');
+  const loginForm = document.getElementById('login-form');
+  const adminDashboard = document.getElementById('admin-dashboard');
+  const teacherDashboard = document.getElementById('teacher-dashboard');
+  const studentDashboard = document.getElementById('student-dashboard');
+  const attendanceModal = document.getElementById('attendance-modal');
+  const closeAttendanceModal = document.getElementById('close-attendance-modal');
+  const cancelAttendance = document.getElementById('cancel-attendance');
+  const proceedAttendance = document.getElementById('proceed-attendance');
+
+  // Video & Canvas for Face Scan
+  const video = document.createElement('video');
+  video.style.display = 'none';
+  document.body.appendChild(video);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 320;
+  canvas.height = 240;
+  canvas.style.display = 'none';
+  document.body.appendChild(canvas);
+
+  // Role Selection
+  selectRoleBtn.addEventListener('click', () => {
+    roleModal.classList.add('active');
+  });
+
+  closeRoleModal.addEventListener('click', () => {
+    roleModal.classList.remove('active');
+  });
+
+  roleCards.forEach(card => {
+    card.addEventListener('click', () => {
+      selectedRole = card.dataset.role;
+      roleTitle.textContent = selectedRole === 'admin' ? 'Administrator' :
+                             selectedRole === 'teacher' ? 'Faculty' : 'Student';
+      roleModal.classList.remove('active');
+      loginModal.classList.add('active');
+    });
+  });
+
+  closeLoginModal.addEventListener('click', () => {
+    loginModal.classList.remove('active');
+  });
+
+  // Login Form Submission
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      alert("Login failed: " + error.message);
+      return;
+    }
+
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+    if (profile.role !== selectedRole) {
+      alert("Invalid role");
+      await supabase.auth.signOut();
+      return;
+    }
+
+    user = { ...data.user, ...profile };
+    loginModal.classList.remove('active');
+    loginPage.classList.add('hidden');
+
+    showDashboard(user.role);
+    listenForAttendanceRequests();
+  });
+
+  function showDashboard(role) {
+    adminDashboard.classList.add('hidden');
+    teacherDashboard.classList.add('hidden');
+    studentDashboard.classList.add('hidden');
+
+    if (role === 'admin') adminDashboard.classList.remove('hidden');
+    else if (role === 'teacher') teacherDashboard.classList.remove('hidden');
+    else if (role === 'student') studentDashboard.classList.remove('hidden');
+  }
+
+  // Teacher: Start Attendance Button
+  document.querySelectorAll('.btn-primary').forEach(btn => {
+    if (btn.textContent.includes('Start Attendance')) {
+      btn.addEventListener('click', async () => {
+        const className = btn.parentElement.querySelector('h3').textContent;
+        const { data: cls } = await supabase.from('classes').select('id').eq('name', className).single();
+        if (!cls) return;
+
+        currentClassId = cls.id;
+
+        await fetch('https://your-render-backend.onrender.com/api/start-attendance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            class_id: currentClassId,
+            teacher_id: user.id
+          })
+        });
+
+        alert(`Attendance started for ${className}`);
+      });
+    }
+  });
+
+  // Listen for Attendance Requests (Polling)
+  async function listenForAttendanceRequests() {
+    if (user.role !== 'student') return;
+
+    setInterval(async () => {
+      const { data } = await supabase
+        .from('classes')
+        .select('id, name, teacher_id')
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (data && !attendanceModal.classList.contains('active')) {
+        currentClassId = data.id;
+        document.querySelector('#attendance-modal h3').textContent = data.name;
+        attendanceModal.classList.add('active');
+      }
+    }, 3000);
+  }
+
+  // Proceed to Face Scan
+  proceedAttendance.addEventListener('click', async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+    await video.play();
+
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = canvas.toDataURL('image/png');
+
+    const response = await fetch('https://.com/api/verify-face', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        student_id: user.id,
+        class_id: currentClassId,
+        image_data: imageData
+      })
+    });
+
+    const result = await response.json();
+    const progressBar = document.querySelector('#attendance-modal .progress-fill');
+
+    if (result.verified) {
+      progressBar.style.width = '100%';
+      progressBar.parentElement.nextElementSibling.textContent = 'Face verified!';
+      setTimeout(() => {
+        attendanceModal.classList.remove('active');
+        stream.getTracks().forEach(t => t.stop());
+        alert('✅ Attendance marked successfully!');
+      }, 1500);
+    } else {
+      alert('❌ Face not recognized. Please try again.');
+    }
+  });
+
+  closeAttendanceModal.addEventListener('click', () => {
+    attendanceModal.classList.remove('active');
+  });
+
+  cancelAttendance.addEventListener('click', () => {
+    attendanceModal.classList.remove('active');
+  });
+</script>   
