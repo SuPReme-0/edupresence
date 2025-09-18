@@ -926,14 +926,14 @@
   // Initialize Feather Icons
   feather.replace();
 
-  // Supabase Client
-  const SUPABASE_URL = "https://your-supabase.supabase.co";
-  const SUPABASE_ANON_KEY = "your-anon-key";
-  const supabase = window.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
   let user = null;
-  let selectedRole = '';
-  let currentClassId = null;
+  const API_BASE = "https://edusphere-api.onrender.com"; // ← Change to your Render URL later
+  const SUPABASE_URL = "https://your-project.supabase.co";
+  const SUPABASE_ANON_KEY = "your-anon-key";
+
+  // Supabase Client
+  const { createClient } = window.supabase;
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   // DOM Elements
   const loginPage = document.getElementById('login-page');
@@ -957,7 +957,6 @@
   const video = document.createElement('video');
   video.style.display = 'none';
   document.body.appendChild(video);
-
   const canvas = document.createElement('canvas');
   canvas.width = 320;
   canvas.height = 240;
@@ -965,26 +964,17 @@
   document.body.appendChild(canvas);
 
   // Role Selection
-  selectRoleBtn.addEventListener('click', () => {
-    roleModal.classList.add('active');
-  });
-
-  closeRoleModal.addEventListener('click', () => {
-    roleModal.classList.remove('active');
-  });
+  selectRoleBtn.addEventListener('click', () => roleModal.classList.add('active'));
+  closeRoleModal.addEventListener('click', () => roleModal.classList.remove('active'));
+  closeLoginModal.addEventListener('click', () => loginModal.classList.remove('active'));
 
   roleCards.forEach(card => {
     card.addEventListener('click', () => {
       selectedRole = card.dataset.role;
-      roleTitle.textContent = selectedRole === 'admin' ? 'Administrator' :
-                             selectedRole === 'teacher' ? 'Faculty' : 'Student';
+      roleTitle.textContent = card.querySelector('h3').textContent;
       roleModal.classList.remove('active');
       loginModal.classList.add('active');
     });
-  });
-
-  closeLoginModal.addEventListener('click', () => {
-    loginModal.classList.remove('active');
   });
 
   // Login Form Submission
@@ -993,75 +983,51 @@
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      alert("Login failed: " + error.message);
-      return;
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+
+      if (!profile || profile.role !== selectedRole) {
+        alert("Invalid role or user not found.");
+        await supabase.auth.signOut();
+        return;
+      }
+
+      user = { ...data.user, ...profile };
+      loginModal.classList.remove('active');
+      loginPage.classList.add('hidden');
+      showDashboard(user.role);
+      if (user.role === 'student') startListeningForAttendance();
+    } catch (err) {
+      alert("Login failed: " + err.message);
     }
-
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
-    if (profile.role !== selectedRole) {
-      alert("Invalid role");
-      await supabase.auth.signOut();
-      return;
-    }
-
-    user = { ...data.user, ...profile };
-    loginModal.classList.remove('active');
-    loginPage.classList.add('hidden');
-
-    showDashboard(user.role);
-    listenForAttendanceRequests();
   });
 
   function showDashboard(role) {
-    adminDashboard.classList.add('hidden');
-    teacherDashboard.classList.add('hidden');
-    studentDashboard.classList.add('hidden');
-
+    [adminDashboard, teacherDashboard, studentDashboard].forEach(d => d.classList.add('hidden'));
     if (role === 'admin') adminDashboard.classList.remove('hidden');
     else if (role === 'teacher') teacherDashboard.classList.remove('hidden');
     else if (role === 'student') studentDashboard.classList.remove('hidden');
   }
 
-  // Teacher: Start Attendance Button
-  document.querySelectorAll('.btn-primary').forEach(btn => {
-    if (btn.textContent.includes('Start Attendance')) {
-      btn.addEventListener('click', async () => {
-        const className = btn.parentElement.querySelector('h3').textContent;
-        const { data: cls } = await supabase.from('classes').select('id').eq('name', className).single();
-        if (!cls) return;
-
-        currentClassId = cls.id;
-
-        await fetch('https://your-render-backend.onrender.com/api/start-attendance', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            class_id: currentClassId,
-            teacher_id: user.id
-          })
-        });
-
-        alert(`Attendance started for ${className}`);
-      });
-    }
-  });
-
-  // Listen for Attendance Requests (Polling)
-  async function listenForAttendanceRequests() {
-    if (user.role !== 'student') return;
-
+  // Listen for Active Classes (Student Side)
+  async function startListeningForAttendance() {
     setInterval(async () => {
-      const { data } = await supabase
+      const {  activeClasses } = await supabase
         .from('classes')
-        .select('id, name, teacher_id')
-        .eq('status', 'active')
-        .maybeSingle();
+        .select('id, name')
+        .eq('status', 'active');
 
-      if (data && !attendanceModal.classList.contains('active')) {
-        currentClassId = data.id;
-        document.querySelector('#attendance-modal h3').textContent = data.name;
+      if (activeClasses && activeClasses.length > 0 && !attendanceModal.classList.contains('active')) {
+        const cls = activeClasses[0];
+        document.querySelector('#attendance-modal h3').textContent = `Give Attendance for ${cls.name}`;
+        currentClassId = cls.id;
         attendanceModal.classList.add('active');
       }
     }, 3000);
@@ -1069,44 +1035,81 @@
 
   // Proceed to Face Scan
   proceedAttendance.addEventListener('click', async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    video.srcObject = stream;
-    await video.play();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      await video.play();
 
-    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-    const imageData = canvas.toDataURL('image/png');
+      canvas.getContext('2d').drawImage(video, 0, 0, 320, 240);
+      const imageData = canvas.toDataURL('image/png');
 
-    const response = await fetch('https://.com/api/verify-face', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        student_id: user.id,
-        class_id: currentClassId,
-        image_data: imageData
-      })
-    });
+      const res = await fetch(`${API_BASE}/api/verify-face`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_id: user.id,
+          class_id: currentClassId,
+          image_ imageData
+        })
+      });
 
-    const result = await response.json();
-    const progressBar = document.querySelector('#attendance-modal .progress-fill');
+      const result = await res.json();
+      const progressBar = document.querySelector('#attendance-modal .progress-fill');
 
-    if (result.verified) {
-      progressBar.style.width = '100%';
-      progressBar.parentElement.nextElementSibling.textContent = 'Face verified!';
-      setTimeout(() => {
-        attendanceModal.classList.remove('active');
-        stream.getTracks().forEach(t => t.stop());
-        alert('✅ Attendance marked successfully!');
-      }, 1500);
-    } else {
-      alert('❌ Face not recognized. Please try again.');
+      if (result.verified) {
+        progressBar.style.width = '100%';
+        document.querySelector('#attendance-modal p.mb-2').textContent = 'Face verified!';
+        setTimeout(() => {
+          alert('✅ Attendance marked!');
+          attendanceModal.classList.remove('active');
+          stream.getTracks().forEach(t => t.stop());
+        }, 1500);
+      } else {
+        alert('❌ Face not recognized. Try again.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Face verification failed.');
     }
   });
 
-  closeAttendanceModal.addEventListener('click', () => {
-    attendanceModal.classList.remove('active');
-  });
+  // Close modals
+  closeAttendanceModal.addEventListener('click', () => attendanceModal.classList.remove('active'));
+  cancelAttendance.addEventListener('click', () => attendanceModal.classList.remove('active'));
 
-  cancelAttendance.addEventListener('click', () => {
-    attendanceModal.classList.remove('active');
+  // Teacher: Start Attendance Button
+  document.querySelectorAll('.btn-primary').forEach(btn => {
+    if (btn.textContent.includes('Start Attendance')) {
+      btn.addEventListener('click', async () => {
+        const classElem = btn.closest('.class-card') || btn.parentElement;
+        const className = classElem.querySelector('h3').textContent.trim();
+
+        const {  classes } = await supabase
+          .from('classes')
+          .select('id')
+          .eq('name', className)
+          .limit(1);
+
+        if (!classes || classes.length === 0) {
+          alert("Class not found in database.");
+          return;
+        }
+
+        const class_id = classes[0].id;
+
+        await fetch(`${API_BASE}/api/start-attendance`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            class_id,
+            teacher_id: user.id
+          })
+        });
+
+        alert(`✅ Attendance started for ${className}`);
+      });
+    }
   });
-</script>   
+</script>
+</body>
+</html>
